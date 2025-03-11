@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Видео поток с камеры</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Левая часть: видео и кнопки -->
+        <div class="left-panel">
+            <div class="video-block">
+                <div class="video-container">
+                    <img src="{{ url_for('video_feed') }}" alt="Видео поток">
+                </div>
+                <button class="relay-btn" onclick="controlRelay(1)">Реле 1</button>
+            </div>
+        </div>
+
+        <!-- Правая часть: кнопки 3 и 4 с подписями -->
+        <div class="right-panel">
+            <div class="right-button">
+                <button class="relay-btn" onclick="controlRelay(3)">Реле 3</button>
+                <span class="button-label">Подпись для реле 3</span>
+            </div>
+            <div class="right-button">
+                <button class="relay-btn" onclick="controlRelay(4)">Реле 4</button>
+                <span class="button-label">Подпись для реле 4</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Функция для отправки запроса на сервер
+        function controlRelay(number) {
+            fetch('/relay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'relay=' + number  // Отправляем номер реле
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data);  // Вывод ответа сервера в консоль браузера
+            });
+        }
+    </script>
+</body>
+</html>
