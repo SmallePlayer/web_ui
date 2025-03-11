@@ -1,48 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Видео поток с камеры</title>
+    <title>Camera Control</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <!-- Левая часть: видео и кнопки -->
-        <div class="left-panel">
-            <div class="video-block">
-                <div class="video-container">
-                    <img src="{{ url_for('video_feed') }}" alt="Видео поток">
-                </div>
-                <button class="relay-btn" onclick="controlRelay(1)">Реле 1</button>
-            </div>
+        <div class="video-panel">
+            <img src="{{ url_for('video_feed') }}" id="video">
+            <button class="relay-btn" id="relay1" onclick="toggleRelay('relay1')">Реле1</button>
         </div>
-
-        <!-- Правая часть: кнопки 3 и 4 с подписями -->
-        <div class="right-panel">
-            <div class="right-button">
-                <button class="relay-btn" onclick="controlRelay(3)">Реле 3</button>
-                <span class="button-label">Подпись для реле 3</span>
-            </div>
-            <div class="right-button">
-                <button class="relay-btn" onclick="controlRelay(4)">Реле 4</button>
-                <span class="button-label">Подпись для реле 4</span>
-            </div>
+        
+        <div class="control-panel">
+            <button class="relay-btn" id="relay_row" onclick="toggleRelay('relay_row')">Реле ряд</button>
+            <button class="relay-btn" id="relay_common" onclick="toggleRelay('relay_common')">Реле общее</button>
         </div>
     </div>
 
     <script>
-        // Функция для отправки запроса на сервер
-        function controlRelay(number) {
-            fetch('/relay', {
+        // Загрузка начальных состояний
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/get_relays')
+                .then(response => response.json())
+                .then(relays => {
+                    for (const relay in relays) {
+                        updateButtonState(relay, relays[relay]);
+                    }
+                });
+        });
+
+        function toggleRelay(relay) {
+            const button = document.getElementById(relay);
+            button.classList.add('processing');
+            
+            fetch('/control', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'relay=' + number  // Отправляем номер реле
+                body: `relay=${relay}`
             })
-            .then(response => response.text())
+            .then(response => response.json())
             .then(data => {
-                console.log(data);  // Вывод ответа сервера в консоль браузера
+                if (data[relay] !== undefined) {
+                    updateButtonState(relay, data[relay]);
+                }
+            })
+            .finally(() => {
+                button.classList.remove('processing');
             });
+        }
+
+        function updateButtonState(relay, state) {
+            const button = document.getElementById(relay);
+            button.classList.toggle('active', state);
+            button.title = state ? 'Включено' : 'Выключено';
         }
     </script>
 </body>

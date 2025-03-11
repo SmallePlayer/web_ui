@@ -1,20 +1,22 @@
-from flask import Flask, render_template, Response, request
+from flask import Flask, render_template, Response, request, jsonify  # Добавлен jsonify
 import cv2
+from camera import Camera
 
 app = Flask(__name__)
 
-# Захват видео с камеры (0 — это индекс камеры по умолчанию)
-camera = cv2.VideoCapture(0)
+relays = {
+    'relay1': False,
+    'relay_row': False,
+    'relay_common': False
+}
 
-def generate_frames():
+# Инициализация камеры 
+current_camera = Camera(source=0, cam_type='usb')
+
+def gen_frames():
     while True:
-        success, frame = camera.read()  # Чтение кадра с камеры
-        if not success:
-            break
-        else:
-            # Преобразуем кадр в JPEG
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
+        frame = current_camera.get_frame()
+        if frame:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
@@ -24,15 +26,21 @@ def index():
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(generate_frames(),
+    return Response(gen_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Добавляем маршрут для обработки POST-запросов от кнопок
-@app.route('/relay', methods=['POST'])
-def control_relay():
-    relay_number = request.form.get('relay')  # Получаем номер реле из запроса
-    print(f"реле{relay_number}")  # Выводим в терминал
-    return f"реле{relay_number} активировано", 200  # Возвращаем ответ
+@app.route('/get_relays')
+def get_relays():
+    return jsonify(relays)  # Теперь работает с правильным импортом
+
+@app.route('/control', methods=['POST'])
+def control():
+    relay = request.form.get('relay')
+    if relay in relays:
+        relays[relay] = not relays[relay]
+        print(f"{relay} state: {relays[relay]}")
+        return jsonify({relay: relays[relay]})
+    return jsonify({'error': 'Relay not found'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(host='0.0.0.0', debug=True)
